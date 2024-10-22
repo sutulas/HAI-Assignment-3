@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/HAI-Assignment-2/static/css/main.4a9ae552.css",
+    "main.js": "/HAI-Assignment-2/static/js/main.64eb30b8.js",
+    "static/js/453.419a5d54.chunk.js": "/HAI-Assignment-2/static/js/453.419a5d54.chunk.js",
+    "static/media/bot-avatar.jpg": "/HAI-Assignment-2/static/media/bot-avatar.68038c95d973715879f4.jpg",
+    "static/media/user-avatar.jpg": "/HAI-Assignment-2/static/media/user-avatar.d6638d1f2fb0f596c2f7.jpg",
+    "index.html": "/HAI-Assignment-2/index.html",
+    "main.4a9ae552.css.map": "/HAI-Assignment-2/static/css/main.4a9ae552.css.map",
+    "main.64eb30b8.js.map": "/HAI-Assignment-2/static/js/main.64eb30b8.js.map",
+    "453.419a5d54.chunk.js.map": "/HAI-Assignment-2/static/js/453.419a5d54.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.4a9ae552.css",
+    "static/js/main.64eb30b8.js"
+  ]
+}
