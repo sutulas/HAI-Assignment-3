@@ -168,3 +168,46 @@ body {
 .send-button:hover {
   background-color: #ddd;
 }
+
+/* Additional styles */
+.clear-button {
+  background-color: #f1f1f1;
+  border: none;
+  padding: 10px 20px;
+  margin-left: 10px;
+  border-radius: 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.clear-button:hover {
+  background-color: #ddd;
+}
+
+
+/* Spinner and loading message */
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.spinner {
+  border: 4px solid rgba(159, 155, 155, 0.493);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border-left-color: #FFFFFF;
+  animation: spin 1s ease infinite;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

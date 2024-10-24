@@ -5,7 +5,7 @@ import botAvatar from './images/bot-avatar.jpg';
 import * as d3 from 'd3-dsv'; // Import d3-dsv for CSV parsing
 import { VegaLite } from 'react-vega'; // Import Vega-Lite component
 
-const url = process.env.NODE_ENV === 'production' ?  'http://127.0.0.1:8000/' : 'http://127.0.0.1:8000/'; //'https://hai-assignment-2.onrender.com/'
+const url = process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:8000/' : 'http://127.0.0.1:8000/'; //'https://hai-assignment-2.onrender.com/'
 
 function App() {
   const [message, setMessage] = useState("");
@@ -14,6 +14,7 @@ function App() {
   const [dragActive, setDragActive] = useState(false);
   const [csvData, setCsvData] = useState(null); // State to hold parsed CSV data
   const [showPreview, setShowPreview] = useState(false); // State to toggle CSV preview
+  const [loading, setLoading] = useState(false); // Loading state for spinner
 
   const chatBoxRef = useRef(null);
   const inputRef = useRef(null);
@@ -30,6 +31,11 @@ function App() {
     const newMessage = { type: "user", text: message };
     setResponse([...response, newMessage]);
 
+    // Add a temporary loading message in the bot's chat bubble
+    const loadingMessage = { type: "bot-loading", text: "Generating response..." };
+    setResponse(prevResponse => [...prevResponse, loadingMessage]);
+    setLoading(true);
+
     fetch(`${url}query`, {
       method: 'POST',
       body: JSON.stringify({ prompt: message }),
@@ -42,11 +48,12 @@ function App() {
         // If the chart spec is included in the response, add it to the response array
         if (data.chart) {
           const botChartResponse = { type: "bot-chart", chartSpec: data.chart }; // Custom message type for charts
-          setResponse([...response, newMessage, botChartResponse, botResponse]);
+          setResponse(prevResponse => prevResponse.slice(0, -1).concat(botChartResponse, botResponse)); // Remove loading message and add the real response
         } else {
-          setResponse([...response, newMessage, botResponse]);
+          setResponse(prevResponse => prevResponse.slice(0, -1).concat(botResponse)); // Remove loading message and add the real response
         }
-      });
+      })
+      .finally(() => setLoading(false));
 
     setMessage("");
   }
@@ -57,6 +64,10 @@ function App() {
 
   function handleKeyDown(e) {
     if (e.key === 'Enter') sendMessage();
+  }
+
+  function clearMessages() {
+    setResponse([]);
   }
 
   // Check if the uploaded file is a CSV
@@ -212,6 +223,11 @@ function App() {
                 <div className="bot-chart-message">
                   <VegaLite spec={msg.chartSpec} /> {/* Render Vega-Lite chart for bot-chart messages */}
                 </div>
+              ) : msg.type === "bot-loading" ? (
+                <div className="loading-indicator">
+                  <div className="spinner"></div>
+                  <p>{msg.text}</p>
+                </div>
               ) : (
                 <span>{msg.text}</span>
               )}
@@ -230,6 +246,7 @@ function App() {
           onKeyDown={handleKeyDown}
         />
         <button className="send-button" onClick={sendMessage}>Send</button>
+        <button className="clear-button" onClick={clearMessages}>Clear Messages</button>
       </div>
     </div>
   );
