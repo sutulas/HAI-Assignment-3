@@ -63,7 +63,7 @@ chart_generation_tool = {
                         "description": "The reduced dataframe to be used as context for the chart",
                     },
                 },
-                "required": ["expression"],
+                "required": ["prompt", "reduced_df"],
                 "additionalProperties": False,
             },
   }
@@ -72,8 +72,8 @@ chart_generation_tool = {
 data_analysis_tool = {
   "type": "function",
   "function": {
-      "name": "chart_generation_",
-            "description": "Creates the specifiactions for a vega chart. Call this whenever you have to create a chart, for example: 'mpg v origin'",
+      "name": "data_analysis",
+            "description": "Creates and runs a python script to analyize data. Call this whenever you have to analyze data, for example: 'average mpg'",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -86,7 +86,7 @@ data_analysis_tool = {
                         "description": "The reduced dataframe to be used as context for the chart",
                     },
                 },
-                "required": ["expression"],
+                "required": ["prompt, reduced_df"],
                 "additionalProperties": False,
             },
   }
@@ -209,10 +209,9 @@ async def query_openai(request: QueryRequest):
         if 'yes' in response_text.lower():  # Adjust based on actual check logic
             reduced_df = global_df.head()
             chart_json, response_text = data_visualization_tool(request.prompt, reduced_df)
-            
-            if chart_json:
-                return QueryResponse(response=response_text, chart=chart_json)
-            else: 
+            if chart_json:  
+              return JSONResponse(content={"chart": json.loads(chart_json), "response": response_text})
+            else:
               return QueryResponse(response="Error: graph failed to load after two attempts, please try again.")
 
         else:
