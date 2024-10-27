@@ -49,6 +49,29 @@ class Spec(BaseModel):
 chart_generation_tool = {
   "type": "function",
   "function": {
+      "name": "data_visualization_tool",
+            "description": "Creates the specifiactions for a vega chart. Call this whenever you have to create a chart, for example: 'mpg v origin'",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "The prompt for the chart",
+                    },
+                    "reduced_df": {
+                        "type": "object",
+                        "description": "The reduced dataframe to be used as context for the chart",
+                    },
+                },
+                "required": ["expression"],
+                "additionalProperties": False,
+            },
+  }
+}
+
+data_analysis_tool = {
+  "type": "function",
+  "function": {
       "name": "chart_generation_",
             "description": "Creates the specifiactions for a vega chart. Call this whenever you have to create a chart, for example: 'mpg v origin'",
             "parameters": {
@@ -126,31 +149,38 @@ def improve_response(query, df, spec, feedback):
     )
     return response.choices[0].message.parsed.spec
 
-def chart_generation(prompt, reduced_df):
-  spec = generate_chart(prompt, reduced_df)
+def data_visualization_tool(prompt, reduced_df):
+  for attempt in range(2):  # Try twice
+    try:
+      spec = generate_chart(prompt, reduced_df)
 
-  feedback = get_feedback(prompt, reduced_df, spec)
+      feedback = get_feedback(prompt, reduced_df, spec)
 
-  final_spec = improve_response(prompt, reduced_df, spec, feedback)
-  final_spec_parsed = json.loads(final_spec)
+      final_spec = improve_response(prompt, reduced_df, spec, feedback)
+      final_spec_parsed = json.loads(final_spec)
 
-  data_records = global_df.to_dict(orient='records')
-  final_spec_parsed['data'] = {'values': data_records}
+      data_records = global_df.to_dict(orient='records')
+      final_spec_parsed['data'] = {'values': data_records}
 
-  # Brief description of the Vega chart
-  prompt = f"Provide a short, 2 sentence description of the following vega chart: \n\n {final_spec}"
-  response = client.chat.completions.create(
-      model="gpt-3.5-turbo",
-      messages=[{"role": "user", "content": prompt}]
-  )
-  response_text = response.choices[0].message.content.strip()
+      # Brief description of the Vega chart
+      prompt = f"Provide a short, 2 sentence description of the following vega chart: \n\n {final_spec}"
+      response = client.chat.completions.create(
+          model="gpt-3.5-turbo",
+          messages=[{"role": "user", "content": prompt}]
+      )
+      response_text = response.choices[0].message.content.strip()
 
-  # Convert the Altair chart to a dictionary (Vega-Lite spec)
-  chart = alt.Chart.from_dict(final_spec_parsed)
-  chart_json = chart.to_json()  # Convert to JSON format
+      # Convert the Altair chart to a dictionary (Vega-Lite spec)
+      chart = alt.Chart.from_dict(final_spec_parsed)
+      chart_json = chart.to_json()  # Convert to JSON format
 
-  # Return the chart JSON to the frontend
-  return chart_json, response_text
+      # Return the chart JSON to the frontend
+      return chart_json, response_text
+    except Exception as e:
+      # Log the error and retry if it's not the last attempt
+      print(f"Graph generation error, trying again...")
+      if attempt == 1:  # If this was the last attempt
+        return None, "Error: graph failed to load after two attempts, please try again."
 
 # Endpoint to interact with OpenAI API and generate the chart
 @app.options("/query")
@@ -178,18 +208,12 @@ async def query_openai(request: QueryRequest):
 
         if 'yes' in response_text.lower():  # Adjust based on actual check logic
             reduced_df = global_df.head()
-
-            # Attempt to generate the chart, allowing for one retry
-            for attempt in range(2):  # Try twice
-                try:
-                    chart_json, response_text = chart_generation(request.prompt, reduced_df)
-                    return JSONResponse(content={"chart": json.loads(chart_json), "response": response_text})
-
-                except Exception as e:
-                    # Log the error and retry if it's not the last attempt
-                    print(f"Graph generation error, trying again...")
-                    if attempt == 1:  # If this was the last attempt
-                        return QueryResponse(response="Error: graph failed to load after two attempts, please try again.")
+            chart_json, response_text = data_visualization_tool(request.prompt, reduced_df)
+            
+            if chart_json:
+                return QueryResponse(response=response_text, chart=chart_json)
+            else: 
+              return QueryResponse(response="Error: graph failed to load after two attempts, please try again.")
 
         else:
             return QueryResponse(response=f"The question \"{request.prompt}\" is not relevant to the dataset.")
