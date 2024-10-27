@@ -7,7 +7,7 @@ import { VegaLite } from 'react-vega';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const url = process.env.NODE_ENV === 'production' ? 'https://hai-assignment-3.onrender.com' : 'http://127.0.0.1:8000/'; //'https://hai-assignment-2.onrender.com/'
+const url = process.env.NODE_ENV === 'production' ? 'https://hai-assignment-3.onrender.com/' : 'http://127.0.0.1:8000/'; //'https://hai-assignment-2.onrender.com/'
 
 function App() {
   const [message, setMessage] = useState("");
