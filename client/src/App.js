@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import userAvatar from './images/user-avatar.jpg';
 import botAvatar from './images/bot-avatar.jpg';
-import * as d3 from 'd3-dsv'; // Import d3-dsv for CSV parsing
-import { VegaLite } from 'react-vega'; // Import Vega-Lite component
-import remarkGfm from 'remark-gfm'
+import * as d3 from 'd3-dsv';
+import { VegaLite } from 'react-vega';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const url = process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:8000/' : 'http://127.0.0.1:8000/'; //'https://hai-assignment-2.onrender.com/'
 
@@ -13,9 +14,9 @@ function App() {
   const [response, setResponse] = useState([{ type: "bot", text: "Upload a CSV file and then ask visualization questions" }]);
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
-  const [csvData, setCsvData] = useState(null); // State to hold parsed CSV data
-  const [showPreview, setShowPreview] = useState(false); // State to toggle CSV preview
-  const [loading, setLoading] = useState(false); // Loading state for spinner
+  const [csvData, setCsvData] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const chatBoxRef = useRef(null);
   const inputRef = useRef(null);
@@ -32,7 +33,6 @@ function App() {
     const newMessage = { type: "user", text: message };
     setResponse([...response, newMessage]);
 
-    // Add a temporary loading message in the bot's chat bubble
     const loadingMessage = { type: "bot-loading", text: "Generating response..." };
     setResponse(prevResponse => [...prevResponse, loadingMessage]);
     setLoading(true);
@@ -44,15 +44,13 @@ function App() {
     })
       .then(response => response.json())
       .then(data => {
-        const botResponse = { type: "bot", text: data.response };
+        const botResponse = {
+          type: "bot",
+          text: data.response,
+          chartSpec: data.chart || null
+        };
 
-        // If the chart spec is included in the response, add it to the response array
-        if (data.chart) {
-          const botChartResponse = { type: "bot-chart", chartSpec: data.chart }; // Custom message type for charts
-          setResponse(prevResponse => prevResponse.slice(0, -1).concat(botChartResponse, botResponse)); // Remove loading message and add the real response
-        } else {
-          setResponse(prevResponse => prevResponse.slice(0, -1).concat(botResponse)); // Remove loading message and add the real response
-        }
+        setResponse(prevResponse => prevResponse.slice(0, -1).concat(botResponse));
       })
       .finally(() => setLoading(false));
 
@@ -71,7 +69,6 @@ function App() {
     setResponse([]);
   }
 
-  // Check if the uploaded file is a CSV
   function isCSV(file) {
     return file && file.type === 'text/csv';
   }
@@ -87,7 +84,7 @@ function App() {
 
     setFile(uploadedFile);
     parseCSV(uploadedFile);
-    sendFile(uploadedFile); // Automatically send file to backend after upload
+    sendFile(uploadedFile);
   }
 
   function sendFile(uploadedFile) {
@@ -107,14 +104,13 @@ function App() {
     }
   }
 
-  // Parse CSV file and store data in state using d3-dsv
   function parseCSV(file) {
     const reader = new FileReader();
 
     reader.onload = function (e) {
       const text = e.target.result;
-      const parsedData = d3.csvParse(text, d3.autoType); // Parse CSV and auto convert types
-      setCsvData(parsedData.slice(0, 50)); // Store only the first 50 rows for preview
+      const parsedData = d3.csvParse(text, d3.autoType);
+      setCsvData(parsedData.slice(0, 50));
     };
 
     reader.readAsText(file);
@@ -139,7 +135,6 @@ function App() {
 
     const droppedFile = e.dataTransfer.files[0];
 
-    // Check if dropped file is a CSV
     if (!isCSV(droppedFile)) {
       const botResponse = { type: "bot", text: "Error: Please upload a valid CSV file." };
       setResponse([...response, botResponse]);
@@ -148,14 +143,13 @@ function App() {
 
     setFile(droppedFile);
     parseCSV(droppedFile);
-    sendFile(droppedFile); // Automatically send file to backend after drop
+    sendFile(droppedFile);
   };
 
   const handleClick = () => {
     inputRef.current.click();
   };
 
-  // Function to handle CSV preview toggle
   const togglePreview = () => {
     setShowPreview(!showPreview);
   };
@@ -220,17 +214,20 @@ function App() {
               className="avatar"
             />
             <div className="message-bubble">
-              {msg.type === "bot-chart" ? (
-                <div className="bot-chart-message">
-                  <VegaLite spec={msg.chartSpec} /> {/* Render Vega-Lite chart for bot-chart messages */}
-                </div>
-              ) : msg.type === "bot-loading" ? (
+              {msg.type === "bot-loading" ? (
                 <div className="loading-indicator">
                   <div className="spinner"></div>
                   <p>{msg.text}</p>
                 </div>
               ) : (
-                <span>{msg.text}</span>
+                <>
+                  {msg.chartSpec && (
+                    <div className="bot-chart-message">
+                      <VegaLite spec={msg.chartSpec} />
+                    </div>
+                  )}
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                </>
               )}
             </div>
           </div>

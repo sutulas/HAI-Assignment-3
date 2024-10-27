@@ -277,56 +277,6 @@ tool_map = {
     "data_analysis": data_analysis
 }
 
-def tool_calls(prompt):
-  messages = [
-    {"role": "system", "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
-  ]
-  # TODO: send the user message and let the model think about which tool to use if any
-  messages.append({"role": "user", "content": prompt})
-  response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=messages,
-    tools=tools,
-    tool_choice="auto",
-  )
-  if response.choices[0].message.tool_calls != None:
-    tool_call = response.choices[0].message.tool_calls[0]
-    name = tool_call.function.name
-    arguments = json.loads(tool_call.function.arguments)
-
-    print('calling tool:', name, ' with arguments:', arguments)# leave this
-    function_to_call = tool_map[name]
-
-    # call the function with the arguments
-    output = function_to_call(**arguments)
-    print('output:', output)
-    print(response.choices[0].message.tool_calls[0].id)
-
-    function_call_result_message = {
-        "role": "tool",
-        "content": json.dumps({
-            "arguments": arguments,
-            "output": output
-        }),
-        "tool_call_id": response.choices[0].message.tool_calls[0].id
-    }
-
-    messages.append(response.choices[0].message)
-    messages.append(function_call_result_message)
-    print('messages:', messages)
-    response = client.chat.completions.create(
-      model="gpt-4o-mini",
-      messages=messages,
-      tools=tools,
-      tool_choice="auto",
-    )
-    # return the model's observation to the user
-    return name, response.choices[0].message.content, output
-
-  # 2. if tool_calls == None
-  messages.append(response.choices[0].message)
-  return response.choices[0].message.content
-
 def query(question, system_prompt, max_iterations=10):
     global chart
     global chart_description
@@ -357,16 +307,23 @@ def query(question, system_prompt, max_iterations=10):
             arguments = json.loads(tool_call.function.arguments)
             function_to_call = tool_map[tool_call.function.name]
             result = function_to_call(**arguments)
+
             if tool_call.function.name == "data_visualization_tool":
               chart = result[0]
               chart_description = result[1]
-            # create a message containing the result of the function call
-            result_content = json.dumps({**arguments, "result": result})
-            function_call_result_message = {
-                "role": "tool",
-                "content": result_content,
-                "tool_call_id": tool_call.id,
-            }
+              function_call_result_message = {
+                  "role": "tool",
+                  "content": result[1],
+                  "tool_call_id": tool_call.id,
+              }
+            else:
+              # create a message containing the result of the function call
+              result_content = json.dumps({**arguments, "result": result})
+              function_call_result_message = { 
+                  "role": "tool",
+                  "content": result_content,
+                  "tool_call_id": tool_call.id,
+              }
             #print_blue("action result:", truncate_string(result_content))
 
             messages.append(function_call_result_message)
@@ -404,7 +361,7 @@ async def query_openai(request: QueryRequest):
         if 'yes' in response_text.lower():  # Adjust based on actual check logic
           response = query(request.prompt, "You are a helpful assistant. Use the supplied tools to assist the user.")
           if chart:
-            return JSONResponse(content={"chart": json.loads(chart), "response": chart_description})
+            return JSONResponse(content={"chart": json.loads(chart), "response": response})
           else:
             return QueryResponse(response=response)
             # name, response, output = tool_calls(request.prompt)
