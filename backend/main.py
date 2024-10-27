@@ -342,7 +342,10 @@ async def preflight():
 @app.post("/query", response_model=QueryResponse)
 async def query_openai(request: QueryRequest):
     global global_df
-
+    global chart
+    global chart_description
+    chart = None
+    chart_description = None
     if global_df.empty:
         return QueryResponse(response="No dataset uploaded yet.")
     
@@ -360,8 +363,12 @@ async def query_openai(request: QueryRequest):
 
         if 'yes' in response_text.lower():  # Adjust based on actual check logic
           response = query(request.prompt, "You are a helpful assistant. Use the supplied tools to assist the user.")
-          if chart:
-            return JSONResponse(content={"chart": json.loads(chart), "response": response})
+          if chart != None:
+            try:
+              return JSONResponse(content={"chart": json.loads(chart), "response": response})
+            except Exception as e:
+              print(chart)
+              return QueryResponse(response="Error: graph failed to load after two attempts, please try again.")
           else:
             return QueryResponse(response=response)
             # name, response, output = tool_calls(request.prompt)
