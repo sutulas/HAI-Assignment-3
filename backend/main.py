@@ -27,7 +27,7 @@ global_df = pd.DataFrame()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this to restrict allowed origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,7 +36,6 @@ app.add_middleware(
 # Configure OpenAI API key
 client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY")
-    # api_key = os.getenv("OPENAI_API_KEY")
 )
 
 # Define request and response models
@@ -51,6 +50,8 @@ class Spec(BaseModel):
 
 chart = None
 chart_description = None
+
+### Tool Definitions ###
 chart_generation_tool = {
   "type": "function",
   "function": {
@@ -89,6 +90,8 @@ data_analysis_tool = {
   }
 }
 
+### Chart Generation Tool Helper Functions ###
+
 def generate_chart(query, df):
   prompt = f'''
     Dataset overview (top five rows): {df.head().to_markdown()}
@@ -104,27 +107,6 @@ def generate_chart(query, df):
     response_format=Spec
   )
   return response.choices[0].message.parsed.spec
-
-def generate_code(query, df):
-  prompt = f'''
-    Dataset overview (top five rows): {df.head().to_markdown()}
-
-    Given the overview of the dataset above, generate python code to answer the user query: {query}.
-
-    Refer the the dataset as 'df' in the code.
-
-    Make sure to print the output of the code using 'print(...)'
-
-    RETURN ONLY THE CODE OR ELSE IT WILL FAIL.
-
-  '''
-  response = client.beta.chat.completions.parse(
-    model="gpt-4o-mini",
-    messages=[
-      {"role": "user", "content": prompt}
-    ]
-  )
-  return response.choices[0].message.content
 
 def get_feedback(query, df, spec, type='chart'):
   if type == 'chart':
@@ -186,6 +168,7 @@ def improve_response(query, df, spec, feedback, type = 'chart'):
     )
     return response.choices[0].message.content
 
+# Chart generation tool
 def data_visualization_tool(prompt):
   reduced_df = global_df.head()
   for attempt in range(2):  # Try twice
@@ -215,6 +198,30 @@ def data_visualization_tool(prompt):
       print(f"Graph generation error, trying again...")
       if attempt == 1:  # If this was the last attempt
         return None, "Error: graph failed to load after two attempts, please try again."
+
+
+### Data Analysis Tool Helper Functions ###
+
+def generate_code(query, df):
+  prompt = f'''
+    Dataset overview (top five rows): {df.head().to_markdown()}
+
+    Given the overview of the dataset above, generate python code to answer the user query: {query}.
+
+    Refer the the dataset as 'df' in the code.
+
+    Make sure to print the output of the code using 'print(...)'
+
+    RETURN ONLY THE CODE OR ELSE IT WILL FAIL.
+
+  '''
+  response = client.beta.chat.completions.parse(
+    model="gpt-4o-mini",
+    messages=[
+      {"role": "user", "content": prompt}
+    ]
+  )
+  return response.choices[0].message.content
 
 def sanitize_input(query: str) -> str:
     """Sanitize input to the python REPL.
@@ -252,6 +259,7 @@ def execute_panda_dataframe_code(code):
         sys.stdout = old_stdout
         return repr(e)
 
+# Data analysis tool
 def data_analysis(prompt):
   df = global_df
   for attempt in range(2):  # Try twice
@@ -271,12 +279,16 @@ def data_analysis(prompt):
       if attempt == 1:  # If this was the last attempt
         return None, "Error: data analysis failed after two attempts, please try again."
 
+
+### Define Tools ###
 tools = [chart_generation_tool, data_analysis_tool]
 tool_map = {
     "data_visualization_tool": data_visualization_tool,
     "data_analysis": data_analysis
 }
 
+
+### Query Function ###
 def query(question, system_prompt, max_iterations=10):
     global chart
     global chart_description
@@ -324,7 +336,6 @@ def query(question, system_prompt, max_iterations=10):
                   "content": result_content,
                   "tool_call_id": tool_call.id,
               }
-            #print_blue("action result:", truncate_string(result_content))
 
             messages.append(function_call_result_message)
         if i == max_iterations and response.choices[0].message.tool_calls != None:
@@ -371,30 +382,11 @@ async def query_openai(request: QueryRequest):
               return QueryResponse(response="Error: graph failed to load after two attempts, please try again.")
           else:
             return QueryResponse(response=response)
-            # name, response, output = tool_calls(request.prompt)
-            # # response = data_analysis(request.prompt, global_df)
-            # if name == 'data_visualization_tool':
-            #   if output:
-            #     return JSONResponse(content={"chart": json.loads(output[0]), "response": output[1]})
-            #   else:
-            #     return QueryResponse(response="Error: graph failed to load after two attempts, please try again.")
-            # else:
-            #   return QueryResponse(response=response)
-            # reduced_df = global_df.head()
-            # chart_json, response_text = data_visualization_tool(request.prompt, reduced_df)
-            # if chart_json:  
-            #   return JSONResponse(content={"chart": json.loads(chart_json), "response": response_text})
-            # else:
-            #   return QueryResponse(response="Error: graph failed to load after two attempts, please try again.")
-
         else:
             return QueryResponse(response=f"The question \"{request.prompt}\" is not relevant to the dataset.")
 
     except Exception as e:
         return QueryResponse(response=f"Error querying OpenAI: {e}")
-
-
-
 
 # Endpoint to handle file uploads
 @app.post("/uploadfile/")
