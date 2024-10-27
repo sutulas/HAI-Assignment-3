@@ -46,6 +46,29 @@ class QueryResponse(BaseModel):
 class Spec(BaseModel):
   spec: str
 
+chart_generation_tool = {
+  "type": "function",
+  "function": {
+      "name": "chart_generation_",
+            "description": "Creates the specifiactions for a vega chart. Call this whenever you have to create a chart, for example: 'mpg v origin'",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "The prompt for the chart",
+                    },
+                    "reduced_df": {
+                        "type": "object",
+                        "description": "The reduced dataframe to be used as context for the chart",
+                    },
+                },
+                "required": ["expression"],
+                "additionalProperties": False,
+            },
+  }
+}
+
 def generate_chart(query, df):
   prompt = f'''
     Dataset overview (top five rows): {df.head().to_markdown()}
@@ -103,7 +126,31 @@ def improve_response(query, df, spec, feedback):
     )
     return response.choices[0].message.parsed.spec
 
+def chart_generation(prompt, reduced_df):
+  spec = generate_chart(prompt, reduced_df)
 
+  feedback = get_feedback(prompt, reduced_df, spec)
+
+  final_spec = improve_response(prompt, reduced_df, spec, feedback)
+  final_spec_parsed = json.loads(final_spec)
+
+  data_records = global_df.to_dict(orient='records')
+  final_spec_parsed['data'] = {'values': data_records}
+
+  # Brief description of the Vega chart
+  prompt = f"Provide a short, 2 sentence description of the following vega chart: \n\n {final_spec}"
+  response = client.chat.completions.create(
+      model="gpt-3.5-turbo",
+      messages=[{"role": "user", "content": prompt}]
+  )
+  response_text = response.choices[0].message.content.strip()
+
+  # Convert the Altair chart to a dictionary (Vega-Lite spec)
+  chart = alt.Chart.from_dict(final_spec_parsed)
+  chart_json = chart.to_json()  # Convert to JSON format
+
+  # Return the chart JSON to the frontend
+  return chart_json, response_text
 
 # Endpoint to interact with OpenAI API and generate the chart
 @app.options("/query")
@@ -135,29 +182,7 @@ async def query_openai(request: QueryRequest):
             # Attempt to generate the chart, allowing for one retry
             for attempt in range(2):  # Try twice
                 try:
-                    spec = generate_chart(request.prompt, reduced_df)
-
-                    feedback = get_feedback(request.prompt, reduced_df, spec)
-
-                    final_spec = improve_response(request.prompt, reduced_df, spec, feedback)
-                    final_spec_parsed = json.loads(final_spec)
-
-                    data_records = global_df.to_dict(orient='records')
-                    final_spec_parsed['data'] = {'values': data_records}
-
-                    # Brief description of the Vega chart
-                    prompt = f"Provide a short, 2 sentence description of the following vega chart: \n\n {final_spec}"
-                    response = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[{"role": "user", "content": prompt}]
-                    )
-                    response_text = response.choices[0].message.content.strip()
-
-                    # Convert the Altair chart to a dictionary (Vega-Lite spec)
-                    chart = alt.Chart.from_dict(final_spec_parsed)
-                    chart_json = chart.to_json()  # Convert to JSON format
-
-                    # Return the chart JSON to the frontend
+                    chart_json, response_text = chart_generation(request.prompt, reduced_df)
                     return JSONResponse(content={"chart": json.loads(chart_json), "response": response_text})
 
                 except Exception as e:
