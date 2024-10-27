@@ -16,6 +16,16 @@ from fastapi.responses import JSONResponse  # Import JSONResponse
 
 # python -m uvicorn backend.main:app --reload
 
+# To run:
+
+# run (python -m)"uvicorn backend.main:app --reload" in the root directory
+
+# run "npm start" in client directory
+
+# .env file must be in root directory
+
+# source venv/bin/activate
+
 # Load environment variables from .env file
 load_dotenv()
 

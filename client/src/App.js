@@ -11,7 +11,7 @@ const url = process.env.NODE_ENV === 'production' ? 'https://hai-assignment-3.on
 
 function App() {
   const [message, setMessage] = useState("");
-  const [response, setResponse] = useState([{ type: "bot", text: "Upload a CSV file and then ask visualization questions" }]);
+  const [response, setResponse] = useState([{ type: "bot", text: "Upload a CSV file and then ask visualization or analysis questions" }]);
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [csvData, setCsvData] = useState(null);
@@ -156,7 +156,7 @@ function App() {
 
   return (
     <div className="chat-container">
-      <h1 className="chat-title">AI Data Visualization Assistant</h1>
+      <h1 className="chat-title">AI Data Visualization and Analysis Assistant</h1>
 
       <div
         className={`drag-and-drop-area ${dragActive ? 'active' : ''}`}

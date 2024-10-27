@@ -1,11 +1,7 @@
+View site at:
+
+https://sutulas.github.io/HAI-Assignment-3/
+
 Repo for second HAI course assignment
 
-To run:
-
-run (python -m)"uvicorn backend.main:app --reload" in the root directory
-
-run "npm start" in client directory
-
-.env file must be in root directory
-
-source venv/bin/activate
+Data visualization and analysis assistent using OpenAI API and react framework
