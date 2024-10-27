@@ -111,6 +111,23 @@ def generate_chart(query, df):
   )
   return response.choices[0].message.parsed.spec
 
+def generate_code(query, df):
+  prompt = f'''
+    Dataset overview (top five rows): {df.head().to_markdown()}
+
+    Given the dataset above, generate a python code for the user query: {query}.
+
+    RETURN ONLY THE CODE OR ELSE IT WILL FAIL.
+
+  '''
+  response = client.beta.chat.completions.parse(
+    model="gpt-4o-mini",
+    messages=[
+      {"role": "user", "content": prompt}
+    ]
+  )
+  return response.choices[0]
+
 def get_feedback(query, df, spec, type='chart'):
   if type == 'chart':
     builder = "Vega-lite spec"
