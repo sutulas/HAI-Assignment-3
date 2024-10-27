@@ -4,6 +4,7 @@ import userAvatar from './images/user-avatar.jpg';
 import botAvatar from './images/bot-avatar.jpg';
 import * as d3 from 'd3-dsv'; // Import d3-dsv for CSV parsing
 import { VegaLite } from 'react-vega'; // Import Vega-Lite component
+import remarkGfm from 'remark-gfm'
 
 const url = process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:8000/' : 'http://127.0.0.1:8000/'; //'https://hai-assignment-2.onrender.com/'
 
